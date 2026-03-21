@@ -1,0 +1,18 @@
+[Unit]
+Description=ReportsBot Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/reportsbot
+ExecStart=/opt/reportsbot/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+EnvironmentFile=/opt/reportsbot/.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=reportsbot
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mariadb:10.11
+    container_name: reportsbot_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: reports_db
+      MYSQL_USER: reports_user
+      MYSQL_PASSWORD: reports_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:

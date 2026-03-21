@@ -77,8 +77,8 @@ async def telegram_webhook(request: Request):
     now = datetime.now(tz)
     report_date = now.date()
 
-    # OWNER UI LOGIC
-    if chat_type == "private" and settings.OWNER_ID and telegram_id == settings.OWNER_ID:
+    # UI LOGIC (Available to anyone in private chat)
+    if chat_type == "private":
         if text.strip() == "/start":
             keyboard = {
                 "keyboard": [[{"text": "📊 Просмотреть отчеты"}]],
@@ -86,7 +86,7 @@ async def telegram_webhook(request: Request):
             }
             await send_message(
                 chat_id=chat_id,
-                text="Привет, Владелец! Тебе доступна панель управления отчетами.",
+                text="Привет! Тебе доступна панель управления отчетами.",
                 reply_markup=keyboard
             )
             return {"ok": True}

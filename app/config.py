@@ -26,14 +26,7 @@ class Settings:
     # Team members: "telegram_id:username,telegram_id:username"
     TEAM_MEMBERS_RAW: str = os.getenv("TEAM_MEMBERS", "")
 
-    # Owner ID
-    OWNER_ID_RAW: str = os.getenv("OWNER_ID", "")
 
-    @property
-    def OWNER_ID(self) -> int | None:
-        if self.OWNER_ID_RAW.strip() and self.OWNER_ID_RAW.strip().isdigit():
-            return int(self.OWNER_ID_RAW.strip())
-        return None
 
     # Timezone
     TIMEZONE: str = os.getenv("TIMEZONE", "Asia/Almaty")

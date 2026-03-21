@@ -70,6 +70,11 @@ def get_users_who_reported_today(session: Session, today: date) -> set[int]:
     return {r[0] for r in reports}
 
 
+def get_reports_for_date(session: Session, target_date: date) -> list[Report]:
+    """Retrieve all reports for a specific date."""
+    return session.query(Report).filter(Report.date == target_date).all()
+
+
 def compute_status(total_score: float) -> int:
     """
     Compute status from total_score:

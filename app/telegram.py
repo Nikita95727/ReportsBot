@@ -18,6 +18,15 @@ router = APIRouter()
 active_chat_ids: set[int] = set()
 
 
+async def send_message(chat_id: int, text: str, reply_markup: dict | None = None):
+    url = f"{settings.bot_api_url}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    async with httpx.AsyncClient() as client:
+        await client.post(url, json=payload)
+
+
 @router.post("/telegram/webhook")
 async def telegram_webhook(request: Request):
     """Handle incoming Telegram webhook updates."""
@@ -54,10 +63,6 @@ async def telegram_webhook(request: Request):
     if not text:
         return {"ok": True}
 
-    # Only process /report messages
-    if not text.strip().lower().startswith("/report"):
-        return {"ok": True}
-
     # Extract user info
     from_user = message.get("from", {})
     telegram_id = from_user.get("id")
@@ -65,11 +70,55 @@ async def telegram_webhook(request: Request):
     first_name = from_user.get("first_name", "")
     last_name = from_user.get("last_name", "")
     user_name = username or f"{first_name} {last_name}".strip() or str(telegram_id)
+    chat_type = message.get("chat", {}).get("type", "")
 
     # Current date in Asia/Almaty
     tz = pytz.timezone(settings.TIMEZONE)
     now = datetime.now(tz)
     report_date = now.date()
+
+    # OWNER UI LOGIC
+    if chat_type == "private" and settings.OWNER_ID and telegram_id == settings.OWNER_ID:
+        if text.strip() == "/start":
+            keyboard = {
+                "keyboard": [[{"text": "📊 Просмотреть отчеты"}]],
+                "resize_keyboard": True
+            }
+            await send_message(
+                chat_id=chat_id,
+                text="Привет, Владелец! Тебе доступна панель управления отчетами.",
+                reply_markup=keyboard
+            )
+            return {"ok": True}
+
+        if text.strip() == "📊 Просмотреть отчеты":
+            session = SessionLocal()
+            try:
+                from app.db_operations import get_reports_for_date
+                reports = get_reports_for_date(session, report_date)
+                
+                if not reports:
+                    await send_message(chat_id, f"За сегодня ({report_date}) отчетов еще нет.")
+                else:
+                    msg = f"📊 **Отчеты за {report_date}**\n\n"
+                    for r in reports:
+                        status_emoji = "🔴" if r.status == 1 else "🟡" if r.status == 2 else "🟢"
+                        msg += f"{status_emoji} **{r.user_name}** | Скор: {r.total_score}\n"
+                        msg += f"План: {'✅' if r.has_plan else '❌'} | Формат: {'✅' if r.format_valid else '❌'}\n"
+                        if r.comment:
+                            msg += f"💬 _{r.comment}_\n"
+                        msg += "\n"
+                    await send_message(chat_id, msg)
+            except Exception as e:
+                logger.error(f"Error fetching reports: {e}", exc_info=True)
+                await send_message(chat_id, "Произошла ошибка при получении отчетов.")
+            finally:
+                session.close()
+            return {"ok": True}
+
+    # Only process /report messages
+    if not text.strip().lower().startswith("/report"):
+        return {"ok": True}
 
     logger.info(f"Processing /report from {user_name} (id={telegram_id}) in chat {chat_id}")
 
